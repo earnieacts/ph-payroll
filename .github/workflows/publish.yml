@@ -91,7 +91,6 @@ jobs:
           else
             # Notes carry the supported-period floor, read live from the code
             # rather than retyped, so release notes cannot drift from behaviour.
-            FLOOR="$(node -p "require('./dist/index.js') && ''" 2>/dev/null || true)"
             FLOOR="$(node --input-type=module -e "
               import { coverage } from './dist/index.js';
               process.stdout.write(coverage().fullySupportedFrom);
