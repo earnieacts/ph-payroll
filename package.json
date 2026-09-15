@@ -1,6 +1,6 @@
 {
   "name": "ph-payroll",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Philippine payroll statutory computation: SSS, PhilHealth, Pag-IBIG and BIR withholding. Exact decimal arithmetic, effective-dated rules sourced from the circulars.",
   "keywords": [
     "philippines",
