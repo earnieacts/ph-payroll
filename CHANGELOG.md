@@ -6,6 +6,8 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-15
+
 ### Added
 
 - `coverage()` and `isPeriodSupported(period)` — query which periods can be computed, and the
@@ -15,6 +17,11 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 - `NoRuleError` now names the encoded windows, states that earlier periods are **not
   approximated**, and points at `coverage()` / `isPeriodSupported()`.
+
+### Unchanged
+
+Coverage is the same as 0.1.0: `computePayroll` supports **2026-01 onward**. This release makes
+that floor queryable; it does not widen it.
 
 ## [0.1.0] - 2026-09-15
 
@@ -62,5 +69,6 @@ If you need a 2024 or 2025 payroll run, this release cannot do it. That is delib
 - Self-employed, voluntary, OFW and kasambahay schedules. Employed members only.
 - De minimis benefits, and which allowances are non-taxable.
 
-[Unreleased]: https://github.com/earnieacts/ph-payroll/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/earnieacts/ph-payroll/releases/tag/v0.1.0
+[Unreleased]: https://github.com/earnieacts/ph-payroll/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/earnieacts/ph-payroll/releases/tag/v0.2.0
+[0.1.0]: https://www.npmjs.com/package/ph-payroll/v/0.1.0
