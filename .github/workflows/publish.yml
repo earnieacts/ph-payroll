@@ -33,14 +33,32 @@ jobs:
           # fails with EBADENGINE. '24' resolves to the newest 24.x, which
           # satisfies both constraints.
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
           cache: pnpm
+          # NO registry-url here, deliberately.
+          #
+          # `registry-url` makes setup-node write an .npmrc containing
+          # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`. With no
+          # NPM_TOKEN secret that resolves to a placeholder, and npm then sends
+          # that garbage token instead of falling back to OIDC — so trusted
+          # publishing is never attempted at all. The symptom is a bare 404 with
+          # no mention of OIDC anywhere in the log.
+          #
+          # Trusted publishing needs NO token, so it needs no .npmrc.
 
       - name: upgrade npm for trusted publishing
         run: |
           npm install -g npm@latest
           node --version
           npm --version
+          # If an auth token is configured, npm uses it and silently skips OIDC,
+          # surfacing later as a bare 404 with no mention of trusted publishing.
+          # Fail here instead, where the cause is obvious.
+          TOKEN="$(npm config get //registry.npmjs.org/:_authToken 2>/dev/null || echo undefined)"
+          if [ "$TOKEN" != "undefined" ] && [ -n "$TOKEN" ]; then
+            echo "::error::An npm auth token is configured, so OIDC will be skipped. Remove registry-url from setup-node."
+            exit 1
+          fi
+          echo "No auth token configured - OIDC will be used." 
 
       - run: pnpm install --frozen-lockfile
 
