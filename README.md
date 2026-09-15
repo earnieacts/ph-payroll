@@ -149,8 +149,12 @@ npm version patch
 git push origin main --follow-tags
 ```
 
-CI publishes only when `package.json`'s version differs from what is already on npm, using npm
-Trusted Publishing (OIDC) rather than a stored token.
+CI publishes only when `package.json`'s version differs from what is already on npm, so an ordinary
+merge ships nothing. Authentication is npm **Trusted Publishing** (OIDC): there is no `NPM_TOKEN`
+secret in this repository, and npm verifies the workflow's identity directly.
+
+Because publishing is direct rather than staged, **push access to `main` is equivalent to npm
+publish access**. See `CLAUDE.md` for the full release setup and its failure signatures.
 
 Golden test values are computed independently in Python's `decimal`, never by running the
 implementation and pasting the output. A test that asserts the code agrees with itself proves only

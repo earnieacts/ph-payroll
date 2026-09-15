@@ -138,13 +138,58 @@ be published once. Bumping the version is the deliberate act; a README fix merge
 
 **Authentication is npm Trusted Publishing (OIDC), not a token.** The workflow requests
 `id-token: write` and npm verifies the workflow's identity directly, so there is no `NPM_TOKEN`
-secret to leak or rotate. It needs Node >= 22.14.0 and npm >= 11.5.1, which is why the workflow
-upgrades npm before publishing. The trusted publisher is configured on npmjs.com against this repo
-and the exact filename `publish.yml` — **renaming that file breaks publishing** until the npm side
-is updated to match.
+secret to leak or rotate. This also outlasts the deprecation of bypass-2FA granular tokens, which
+lose direct-publish in January 2027.
 
-This also matters because bypass-2FA granular tokens are being deprecated: direct publishing with
-them is removed in January 2027. Trusted publishing is the path that keeps working.
+### The npmjs.com side, which is where every failure came from
+
+Configured at **npmjs.com → ph-payroll → Settings → Trusted Publisher**. All of it is fixed at
+creation; changing anything means deleting the connection and making a new one.
+
+| Field | Value | Why it matters |
+|---|---|---|
+| Publisher | GitHub Actions | |
+| Organization or user | `earnieacts` | |
+| Repository | `ph-payroll` | Bare name. The form's placeholder is a full git URL, which is **not** what it wants |
+| Workflow filename | `publish.yml` | Bare filename, not a path. **Renaming the workflow breaks publishing** until npm is updated |
+| Environment name | *blank* | This workflow declares no GitHub environment. Any value here fails the match |
+| Allow `npm publish` | **checked** | Unchecked means staged publishing only, and plain `npm publish` is refused |
+
+That last row is unchecked by default and npm labels it "Not recommended", so it is easy to leave
+alone and then spend an hour debugging the workflow. The recommendation is sound for teams, where
+CI operators should not hold publish rights: staged publishing puts a human with 2FA between CI and
+the registry. For a sole maintainer that human is you, approving your own release seconds later, so
+direct publish is the right trade here. **The cost is real: push access to `main` is equivalent to
+npm publish access.** Pinning the third-party actions to commit SHAs is the mitigation that
+actually matters.
+
+### Do NOT add `registry-url` to setup-node
+
+It makes setup-node write an `.npmrc` containing
+`//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`. With no `NPM_TOKEN` secret that resolves to
+a placeholder, npm sends the garbage token, and **OIDC is never attempted at all**. Trusted
+publishing needs no token, so it needs no `.npmrc`. The publish job has a guard that fails loudly
+if any auth token is configured.
+
+### Failure signatures, and what they actually mean
+
+npm's summaries point at the wrong fix, so read the verbose log:
+
+| What npm says | What is actually wrong |
+|---|---|
+| `E404 ... could not be found or you do not have permission` | A token is configured, so OIDC was skipped entirely. Remove `registry-url` |
+| `ENEEDAUTH ... authorize this machine using npm login` | OIDC *was* attempted and refused. The real message is one layer down |
+| `oidc Failed token exchange ... package not found` (verbose only) | No trusted-publisher record matches. Check the table above |
+| Run fails in 0s, listed by *path* instead of its `name:` | The workflow YAML does not parse. See **Editing a workflow** |
+
+`npm login` is never the answer in CI.
+
+### Bootstrapping a new package
+
+A trusted publisher cannot be configured for a package that does not exist yet, so **the first
+version is published by hand** with `npm publish --access public --otp=<code>`, which needs 2FA
+enabled on the account. Everything after that is automated. `0.1.0` was published that way;
+`0.2.0` was the first through CI.
 
 ### Editing a workflow
 
