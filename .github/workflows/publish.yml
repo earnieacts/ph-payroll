@@ -17,6 +17,11 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Restated at job level. Workflow-level permissions should inherit, but this
+    # removes a variable while diagnosing a missing ID token.
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -80,9 +85,27 @@ jobs:
 
       # prepublishOnly re-runs clean + typecheck + test + build, so a broken
       # build cannot reach the registry even if CI were somehow skipped.
+      # npm returned ENEEDAUTH rather than attempting OIDC, which means it saw no
+      # ID token. Confirm whether GitHub is issuing one before blaming npm or the
+      # trusted-publisher config. Prints presence only, never the token itself.
+      - name: is GitHub issuing an OIDC token?
+        if: steps.check.outputs.should_publish == 'true'
+        run: |
+          if [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "ACTIONS_ID_TOKEN_REQUEST_URL: present"
+          else
+            echo "::error::ACTIONS_ID_TOKEN_REQUEST_URL is NOT set. The job has no id-token permission, so npm cannot use OIDC."
+          fi
+          if [ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+            echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN: present"
+          else
+            echo "::error::ACTIONS_ID_TOKEN_REQUEST_TOKEN is NOT set."
+          fi
+          echo "npm: $(npm --version)"
+
       - name: publish
         if: steps.check.outputs.should_publish == 'true'
-        run: npm publish --access public
+        run: npm publish --access public --loglevel verbose
 
       # Idempotent on purpose. `npm version` creates the tag locally, so whether
       # it already exists on origin depends on whether you pushed with
