@@ -1,14 +1,59 @@
 {
   "name": "ph-payroll",
   "version": "0.1.0",
-  "description": "Effective-dated Philippine payroll statutory computation. Exact decimals, sourced rules.",
+  "description": "Philippine payroll statutory computation: SSS, PhilHealth, Pag-IBIG and BIR withholding. Exact decimal arithmetic, effective-dated rules sourced from the circulars.",
+  "keywords": [
+    "philippines",
+    "payroll",
+    "sss",
+    "philhealth",
+    "pag-ibig",
+    "hdmf",
+    "bir",
+    "withholding-tax",
+    "train-law",
+    "statutory",
+    "contributions",
+    "decimal",
+    "hr",
+    "mpf"
+  ],
   "license": "MIT",
+  "author": "earnieacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/earnieacts/ph-payroll.git"
+  },
+  "bugs": {
+    "url": "https://github.com/earnieacts/ph-payroll/issues"
+  },
+  "homepage": "https://github.com/earnieacts/ph-payroll#readme",
   "type": "module",
-  "engines": { "node": ">=22.0.0" },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "SPEC.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run clean && npm run typecheck && npm run test && npm run build"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",

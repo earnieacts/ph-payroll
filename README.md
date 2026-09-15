@@ -28,6 +28,15 @@ formula error and a transcription error cannot hide behind each other. Silently 
 deductions surface months later as a DOLE or BIR finding, by which time they have been wrong on
 every payslip since.
 
+## Install
+
+```bash
+npm install ph-payroll
+```
+
+Zero runtime dependencies. ESM only. Requires Node 18+ (it uses `bigint`, and imports no Node
+built-ins at all, so it runs in any modern runtime including browsers and edge workers).
+
 ## Use
 
 ```ts
@@ -48,6 +57,19 @@ r.employerCost;                      // '3355.00'
 ```
 
 Amounts go in and come out as **strings**. Parse them with a decimal library, never `Number()`.
+
+Individual rules are exported too, for callers doing their own arithmetic:
+
+```ts
+import { sss, monthlySalaryCredit, annualTax, parseDecimal, formatFixed } from 'ph-payroll';
+
+const msc = monthlySalaryCredit(parseDecimal('14749.99'), '2026-03');
+formatFixed(msc, 2); // '14500.00' — one centavo more would be 15,000
+
+sss(parseDecimal('50000'), '2026-03').mpfMsc; // the slice above 20,000
+```
+
+These work in `Scaled`, a `bigint` at 10^18. `computePayroll` handles that conversion itself.
 
 ## What is implemented
 
@@ -73,13 +95,18 @@ This is a reading of the statute, not legal advice.
 
 ## Develop
 
-Requires Node 22 and pnpm (`npm install` fails on this machine with an arborist bug).
+Node 22 and pnpm for development (`npm install` fails on the author's machine with an arborist
+bug). The published library itself needs only Node 18.
 
 ```bash
 nvm use && pnpm install
 pnpm test        # 129 tests
 pnpm typecheck
+pnpm build       # tsc -> dist/
 ```
+
+`prepublishOnly` runs clean + typecheck + tests + build, so a broken build cannot be published.
+That matters: npm blocks unpublish after 72 hours and burns the version number permanently.
 
 Golden test values are computed independently in Python's `decimal`, never by running the
 implementation and pasting the output. A test that asserts the code agrees with itself proves only
