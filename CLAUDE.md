@@ -82,7 +82,13 @@ npx vitest run     # Test Files 4 passed, Tests 129 passed
 npx tsc --noEmit   # exit 0
 ```
 
-No build step, no bundler, no server to start. `tsc --noEmit` and the test suite are the whole gate.
+Build with `pnpm build` (`tsc -p tsconfig.build.json` into `dist/`). There is no bundler and no
+server to start; `tsc --noEmit`, the test suite and a clean build are the whole gate, and
+`prepublishOnly` runs all three.
+
+Published to npm as **`ph-payroll`**, ESM only, zero runtime dependencies. `engines` is `>=18`:
+the library imports no `node:` builtins and uses nothing past ES2020 beyond `bigint`, so it also
+runs in browsers and edge runtimes. Do not raise that floor without a reason that actually exists.
 
 ## Conventions
 
@@ -93,8 +99,12 @@ No build step, no bundler, no server to start. `tsc --noEmit` and the test suite
 - Amounts are `Scaled` (bigint) internally and strings at the API surface. A `number` anywhere near
   a peso is a review finding.
 - Conventional Commits, scopes: `sss, philhealth, pagibig, bir, decimal, compute, spec, deps`.
-- `develop` integrates, `main` releases.
+- **Single `main` branch.** Unlike the sibling `fx-rate-api`, this is a published library, not a
+  deployed product: releases are npm versions and git tags, not a branch promotion. A develop/main
+  split would just be ceremony contributors have to learn.
 - MIT licensed, and it should stay that way: distribution is the point, not the moat.
+- **The repo is public.** Nothing local-only may be committed; `.claude/` is gitignored and must
+  stay that way.
 
 ## The legal basis for publishing this
 
