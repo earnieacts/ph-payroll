@@ -36,6 +36,9 @@ export type { PagIbigRule } from './rules/pagibig.js';
 export { annualTax, monthlyWithholding, thirteenthMonthTaxable, BIR_RULES } from './rules/bir.js';
 export type { BirRule, TaxBracket } from './rules/bir.js';
 
+export { coverage, isPeriodSupported } from './rules/coverage.js';
+export type { Coverage, CoverageWindow, ContributionName } from './rules/coverage.js';
+
 export { NoRuleError, NotSourcedError, appliesTo, resolve, assertPeriod, PERIOD_RE } from './rules/types.js';
 export type { Period, Effective, Share, ContributionResult } from './rules/types.js';
 

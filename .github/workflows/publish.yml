@@ -66,15 +66,54 @@ jobs:
         if: steps.check.outputs.should_publish == 'true'
         run: npm publish --access public
 
+      # Idempotent on purpose. `npm version` creates the tag locally, so whether
+      # it already exists on origin depends on whether you pushed with
+      # --follow-tags. Both must work: the alternative is a red run for a release
+      # that actually succeeded, which teaches you to ignore red runs.
       - name: tag the release
         if: steps.check.outputs.should_publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.check.outputs.version }}
         run: |
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
-          gh release create "v$VERSION" \
-            --title "v$VERSION" \
-            --notes "Published to npm as ph-payroll@$VERSION." \
-            --verify-tag
+          TAG="v$VERSION"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already on origin (pushed with --follow-tags). Leaving it."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Created and pushed $TAG."
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists. Nothing to do."
+          else
+            # Notes carry the supported-period floor, read live from the code
+            # rather than retyped, so release notes cannot drift from behaviour.
+            FLOOR="$(node -p "require('./dist/index.js') && ''" 2>/dev/null || true)"
+            FLOOR="$(node --input-type=module -e "
+              import { coverage } from './dist/index.js';
+              process.stdout.write(coverage().fullySupportedFrom);
+            ")"
+
+            {
+              echo "Published to npm as \`ph-payroll@$VERSION\`."
+              echo
+              echo '```bash'
+              echo "npm install ph-payroll@$VERSION"
+              echo '```'
+              echo
+              echo "### Supported periods"
+              echo
+              echo "\`computePayroll\` supports **$FLOOR onward**. Earlier periods throw"
+              echo "\`NoRuleError\` rather than approximating, because rules are encoded only"
+              echo "from the circular that introduced them."
+              echo
+              echo "Check with \`coverage()\` or \`isPeriodSupported(period)\` before computing."
+              echo
+              echo "See CHANGELOG.md for the full entry."
+            } > /tmp/notes.md
+
+            gh release create "$TAG" --title "$TAG" --notes-file /tmp/notes.md --verify-tag
+          fi

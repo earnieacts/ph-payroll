@@ -45,8 +45,11 @@ export function resolve<T extends Effective>(rules: readonly T[], period: Period
   if (matches.length === 1) return matches[0]!;
   if (matches.length === 0) {
     throw new NoRuleError(
-      `No ${what} rule set covers ${period}. Known windows: ` +
-        rules.map((r) => `${r.effectiveFrom}..${r.effectiveTo ?? 'present'}`).join(', '),
+      `No ${what} rule set covers ${period}. Encoded windows: ` +
+        rules.map((r) => `${r.effectiveFrom}..${r.effectiveTo ?? 'present'}`).join(', ') +
+        '. Rules are only encoded from the circular that introduced them; earlier periods ' +
+        'are not approximated. Call coverage() to see every supported window, or ' +
+        'isPeriodSupported(period) to check before computing.',
     );
   }
   throw new RangeError(

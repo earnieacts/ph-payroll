@@ -71,6 +71,40 @@ sss(parseDecimal('50000'), '2026-03').mpfMsc; // the slice above 20,000
 
 These work in `Scaled`, a `bigint` at 10^18. `computePayroll` handles that conversion itself.
 
+## Which periods it can compute
+
+**`computePayroll` works from 2026-01 onward.** Earlier periods throw `NoRuleError`.
+
+That floor is not arbitrary: rules are encoded only from the circular that introduced them, and the
+four circulars did not take effect together. `computePayroll` needs all four, so it is limited by
+the most recent.
+
+| Contribution | Encoded from | Source |
+|---|---|---|
+| BIR withholding | 2023-01 | TRAIN (RA 10963), 2nd phase |
+| Pag-IBIG | 2024-02 | HDMF Circular 460 |
+| SSS | 2025-01 | SSS Circular 2024-006 |
+| **PhilHealth** | **2026-01** | RA 11223, CY2026 schedule — **the binding constraint** |
+
+Check before computing rather than catching per employee:
+
+```ts
+import { coverage, isPeriodSupported } from 'ph-payroll';
+
+coverage().fullySupportedFrom;   // '2026-01'
+isPeriodSupported('2025-06');    // false
+isPeriodSupported('2026-03');    // true
+
+coverage().windows;              // every window, with the circular that set it
+```
+
+Individual rules reach further back than `computePayroll` does. `annualTax(taxable, '2023-06')`
+works, because BIR is encoded from 2023-01, even though a full payroll run for that month is not.
+
+**Nothing is approximated.** A period with no encoded rule fails loudly rather than quietly
+applying today's rates to a 2024 back-computation. Widening coverage means finding the older
+circular and encoding it — see [Contributing](#contributing).
+
 ## What is implemented
 
 | | Basis | Status |

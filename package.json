@@ -41,6 +41,7 @@
   "files": [
     "dist",
     "SPEC.md",
+    "CHANGELOG.md",
     "LICENSE",
     "README.md"
   ],
