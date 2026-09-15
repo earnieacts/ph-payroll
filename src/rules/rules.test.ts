@@ -4,7 +4,7 @@ import { philHealth } from './philhealth.js';
 import { pagIbig } from './pagibig.js';
 import { annualTax, thirteenthMonthTaxable } from './bir.js';
 import { sss } from './sss.js';
-import { resolve, appliesTo, assertPeriod, NoRuleError, NotSourcedError } from './types.js';
+import { resolve, appliesTo, assertPeriod, NoRuleError } from './types.js';
 
 const peso = (v: bigint) => formatFixed(v, 2);
 const P = (s: string) => parseDecimal(s);
@@ -174,10 +174,12 @@ describe('13th month exemption', () => {
 });
 
 describe('SSS', () => {
-  it('throws NotSourcedError rather than returning a guessed figure', () => {
-    // A wrong bracket is worse than a missing one: a caller can handle this,
-    // but silently wrong deductions surface months later as a DOLE finding.
-    expect(() => sss(P('25000'), '2026-03')).toThrow(NotSourcedError);
-    expect(() => sss(P('25000'), '2026-03')).toThrow(/Circular No. 2024-006/);
+  it('is sourced from Circular 2024-006 and cites it', () => {
+    // The full 61-row schedule is cross-checked in sss.table.test.ts.
+    expect(sss(P('25000'), '2026-03').source).toMatch(/Circular No. 2024-006/);
+  });
+
+  it('refuses a period before the circular took effect', () => {
+    expect(() => sss(P('25000'), '2024-12')).toThrow(NoRuleError);
   });
 });

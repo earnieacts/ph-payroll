@@ -3,8 +3,8 @@
 Philippine payroll statutory computation. Exact decimals, effective-dated rules, sourced from the
 circulars themselves.
 
-**Status: early. SSS is not implemented yet and the library says so loudly.** Do not put these
-figures on a payslip until that gap is closed.
+**Status: early but complete for the current rules.** All four statutory contributions are
+implemented and sourced from their circulars. Verify against your own payroll before relying on it.
 
 ## Why this exists
 
@@ -22,9 +22,11 @@ deduction on someone's payslip.
 Asking for a period with no encoded rule set throws, rather than silently applying today's rates
 to a 2023 back-computation.
 
-**A missing rule beats a guessed one.** SSS throws `NotSourcedError` naming the exact circular to
-read. A caller can handle that. Silently wrong statutory deductions surface months later as a DOLE
-or BIR finding, by which time they have been wrong on every payslip since.
+**A missing rule beats a guessed one.** Nothing is encoded from a secondary source. The SSS
+schedule is derived, then cross-checked against all 61 rows transcribed from the circular, so a
+formula error and a transcription error cannot hide behind each other. Silently wrong statutory
+deductions surface months later as a DOLE or BIR finding, by which time they have been wrong on
+every payslip since.
 
 ## Use
 
@@ -33,12 +35,16 @@ import { computePayroll } from 'ph-payroll';
 
 const r = computePayroll({ monthlyBasic: '25000', period: '2026-03' });
 
+r.contributions.sss.msc;             // '25000.00'
+r.contributions.sss.employee;        // '1250.00'
+r.contributions.sss.mpfMsc;          // '5000.00'   (the slice above 20,000)
+r.contributions.sss.ec;              // '30.00'     (employer-only)
 r.contributions.philHealth.employee; // '625.00'
-r.contributions.pagIbig.employee;    // '200.00'  (capped at the Maximum Fund Salary)
-r.taxableIncome;                     // '24175.00'
-r.withholdingTax;                    // '501.25'
-r.netPay;                            // '23673.75'
-r.warnings;                          // ['SSS is EXCLUDED from this computation...']
+r.contributions.pagIbig.employee;    // '200.00'    (capped at the Maximum Fund Salary)
+r.taxableIncome;                     // '22925.00'
+r.withholdingTax;                    // '313.75'
+r.netPay;                            // '22611.25'
+r.employerCost;                      // '3355.00'
 ```
 
 Amounts go in and come out as **strings**. Parse them with a decimal library, never `Number()`.
@@ -50,7 +56,7 @@ Amounts go in and come out as **strings**. Parse them with a decimal library, ne
 | **BIR withholding** | TRAIN (RA 10963), 2nd phase, from 2023-01 | Implemented |
 | **PhilHealth** | RA 11223 (UHC Act), CY2026 | Implemented, 2026 only |
 | **Pag-IBIG** | HDMF Circular 460, from 2024-02 | Implemented |
-| **SSS** | Circular 2024-006, from 2025-01 | **Not implemented.** See SPEC.md §7 |
+| **SSS** | Circular 2024-006, from 2025-01 | Implemented, all 61 rows verified |
 
 [`SPEC.md`](./SPEC.md) is the contract. Code implements it, tests assert against it, and a
 circular change lands there first with its citation.
@@ -71,7 +77,7 @@ Requires Node 22 and pnpm (`npm install` fails on this machine with an arborist 
 
 ```bash
 nvm use && pnpm install
-pnpm test        # 55 tests
+pnpm test        # 129 tests
 pnpm typecheck
 ```
 
@@ -81,8 +87,10 @@ self-consistency.
 
 ## Contributing
 
-The most useful contribution is **transcribing SSS Circular No. 2024-006**: the MSC bracket
-boundaries, the EC cut-over, and the WISP split above MSC 20,000. From the circular itself, not
-from a secondary site. See SPEC.md §7 and §8.
+The most useful contributions now are **historical rule sets**: PhilHealth's annual rates before
+2026, Pag-IBIG before Circular 460, and SSS before Circular 2024-006. Each one makes a further year
+of back-computation possible.
+
+From the circular itself, never a secondary site. See SPEC.md §8.
 
 MIT.

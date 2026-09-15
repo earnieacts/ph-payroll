@@ -142,42 +142,52 @@ fund salary. At exactly ₱1,500 the employee rate is 1%; at ₱1,500.01 it is 2
 
 ## 7. SSS
 
-**Source:** SSS Circular No. 2024-006, effective January 2025. 15% total is the final adjustment
-mandated by the Social Security Act of 2018 (RA 11199).
+**Source:** SSS Circular No. 2024-006, "Schedule of SSS Contributions Effective January 2025",
+signed 19 December 2024. Issued under RA 11199 (Social Security Act of 2018) and SSC Resolution
+No. 560-s.2024. Repeals Circular 2022-033. **Read from the circular itself.**
+
+Three programmes share one schedule:
+
+| Programme | Funded by | Paid by |
+|---|---|---|
+| Regular SS | MSC up to ₱20,000 | 10% employer, 5% employee |
+| **MPF** (Mandatory Provident Fund) | MSC above ₱20,000, up to ₱35,000 | 10% employer, 5% employee |
+| EC (Employees' Compensation) | flat amount | **employer only** |
+
+Note the programme above ₱20,000 is the **Mandatory Provident Fund**, credited to the member's
+individual account. It is not WISP.
 
 | Field | Value |
 |---|---|
-| Total rate | 15% of MSC |
-| Employee share | 5% of MSC |
-| Employer share | 10% of MSC |
-| MSC floor | ₱5,000 |
-| MSC ceiling | ₱35,000 |
-| MSC increment | ₱500 |
-| EC (employer-only) | ₱10, rising to ₱30 at MSC ≥ ₱15,000 |
+| MSC floor / ceiling | ₱5,000 / ₱35,000 |
+| MSC step | ₱500 |
+| Regular SS ceiling | ₱20,000 |
+| EC | ₱10 below MSC ₱15,000, ₱30 at or above |
 
-**SSS is the one that is NOT fully sourced yet.** Three things must come from the circular PDF
-itself, not from a secondary site:
+**Bracket mapping.** The published rows run "X,250 to X,749.99 → MSC X,500", with "BELOW 5,250" at
+the floor and "34,750 and Over" at the ceiling. That is a ₱500 rounding whose boundary sits ₱250
+above each step, so adding 250 before flooring puts the boundary in the right place:
 
-1. **Exact bracket boundaries.** MSC moves in ₱500 steps, but the compensation range that maps to
-   each MSC has specific bounds (the pattern is roughly "₱X,250 to ₱X,749.99 → MSC ₱X,500"). The
-   boundary rounding is where an implementation silently disagrees with SSS by one bracket.
-2. **The EC threshold.** ₱10 below and ₱30 at MSC ≥ ₱15,000 is the reported rule; confirm the exact
-   cut-over.
-3. **WISP.** For MSC above ₱20,000, contributions are split between the regular fund and the
-   Workers' Investment and Savings Program. Whether a payroll consumer needs that split surfaced
-   separately is an open design question, and the totals must reconcile either way.
+```
+msc = clamp(floor((compensation + 250) / 500) * 500, 5_000, 35_000)
+```
 
-Until these are read from the circular, the SSS module ships as a documented gap rather than a
-guess. **A wrong bracket is worse than a missing one**: a caller can handle `not_implemented`, but
-silently wrong statutory deductions surface as a DOLE or BIR finding months later.
+**EC never touches the employee.** It is an employer premium and does not reduce taxable income.
+
+**Verification.** The implementation derives the schedule rather than looking it up, and
+`src/rules/sss.table.test.ts` carries all **61 published rows** transcribed from page 2 of the
+circular and asserts the derivation reproduces every one, plus both edges of every range. A
+transcription slip and a formula slip cannot hide behind each other.
 
 ## 8. Known gaps
 
 Nothing below is implemented, and none of it should be guessed:
 
-- SSS bracket boundaries, EC cut-over, WISP split (§7)
 - PhilHealth historical rates before 2026 (the UHC Act stepped the rate up each year)
 - SSS, Pag-IBIG and BIR rule sets for years before their current circulars
+- Contributions for compensation below ₱5,000: the schedule floors the MSC at ₱5,000, so a
+  part-time earner contributes as though earning ₱5,000. That is what the circular says; whether
+  every employer applies it that way is a separate question
 - Whether an SSS circular distinct to 2026 exists. As of this writing, no confirmed 2026 circular
   was found, yet several third-party sites publish a "2026 table" anyway. Treat those as unsourced.
 - Self-employed, voluntary, OFW and kasambahay schedules. Employed members only for now.
