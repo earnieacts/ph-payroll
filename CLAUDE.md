@@ -122,6 +122,37 @@ no approval, no royalties, any purpose. This is a reading of the statute, not le
 CC BY 4.0 and fine, but other agencies assert rights over their publications and would need approval.
 Check before adding anything that is not a circular or a statute.
 
+## Releasing
+
+**Publishing is automated and version-driven.** `.github/workflows/publish.yml` runs on every push
+to `main`, compares `package.json`'s version against what is on npm, and publishes only when they
+differ. So the release procedure is:
+
+```bash
+npm version patch   # or minor / major — commits and tags locally
+git push origin main --follow-tags
+```
+
+Publishing on *every* merge would be wrong: the second merge would fail, because a version can only
+be published once. Bumping the version is the deliberate act; a README fix merges quietly.
+
+**Authentication is npm Trusted Publishing (OIDC), not a token.** The workflow requests
+`id-token: write` and npm verifies the workflow's identity directly, so there is no `NPM_TOKEN`
+secret to leak or rotate. It needs Node >= 22.14.0 and npm >= 11.5.1, which is why the workflow
+upgrades npm before publishing. The trusted publisher is configured on npmjs.com against this repo
+and the exact filename `publish.yml` — **renaming that file breaks publishing** until the npm side
+is updated to match.
+
+This also matters because bypass-2FA granular tokens are being deprecated: direct publishing with
+them is removed in January 2027. Trusted publishing is the path that keeps working.
+
+### Testing the engines claim
+
+`engines` says `>=18`, but vitest 4 needs `^20 || ^22 || >=24`, so the full suite cannot run on
+Node 18. CI therefore splits: `test` runs the suite on 20/22/24, then `compat` downloads the built
+`dist/` and *runs* it on 18/20/22/24 with no install at all. A declared floor that is never
+exercised is a floor that is wrong.
+
 ## Obsidian vault
 
 Durable project knowledge lives in the vault via the `obsidian` MCP server (`.mcp.json` at the repo

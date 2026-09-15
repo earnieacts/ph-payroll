@@ -108,6 +108,16 @@ pnpm build       # tsc -> dist/
 `prepublishOnly` runs clean + typecheck + tests + build, so a broken build cannot be published.
 That matters: npm blocks unpublish after 72 hours and burns the version number permanently.
 
+Releases are automated. Pushing a version bump to `main` publishes it:
+
+```bash
+npm version patch
+git push origin main --follow-tags
+```
+
+CI publishes only when `package.json`'s version differs from what is already on npm, using npm
+Trusted Publishing (OIDC) rather than a stored token.
+
 Golden test values are computed independently in Python's `decimal`, never by running the
 implementation and pasting the output. A test that asserts the code agrees with itself proves only
 self-consistency.

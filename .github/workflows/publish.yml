@@ -1,0 +1,76 @@
+name: publish
+
+# Publishes when the version in package.json changes on main.
+#
+# NOT on every merge: the second merge would fail, because a version can only be
+# published once. Bumping the version is therefore the deliberate act that
+# triggers a release, and a README fix merges quietly.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # create the release tag
+  id-token: write # OIDC for npm trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          # Trusted publishing needs Node >= 22.14.0.
+          node-version: '22.14.0'
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      # Trusted publishing needs npm >= 11.5.1, which is newer than the npm
+      # bundled with Node 22.14.0.
+      - name: upgrade npm for trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: has the version changed?
+        id: check
+        run: |
+          LOCAL="$(node -p "require('./package.json').version")"
+          NAME="$(node -p "require('./package.json').name")"
+          # A never-published package 404s here; that is a publish, not a failure.
+          REMOTE="$(npm view "$NAME" version 2>/dev/null || echo 'none')"
+          echo "local=$LOCAL  remote=$REMOTE"
+          echo "version=$LOCAL" >> "$GITHUB_OUTPUT"
+          if [ "$LOCAL" = "$REMOTE" ]; then
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "Version $LOCAL is already on npm. Nothing to do."
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # prepublishOnly re-runs clean + typecheck + test + build, so a broken
+      # build cannot reach the registry even if CI were somehow skipped.
+      - name: publish
+        if: steps.check.outputs.should_publish == 'true'
+        run: npm publish --access public
+
+      - name: tag the release
+        if: steps.check.outputs.should_publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes "Published to npm as ph-payroll@$VERSION." \
+            --verify-tag
