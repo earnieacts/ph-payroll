@@ -146,6 +146,23 @@ is updated to match.
 This also matters because bypass-2FA granular tokens are being deprecated: direct publishing with
 them is removed in January 2027. Trusted publishing is the path that keeps working.
 
+### Editing a workflow
+
+Validate the **YAML**, not just the shell inside it. Both layers can be wrong independently, and
+`bash -n` on a hand-dedented extract passes while the file is unparseable:
+
+```bash
+npx --yes js-yaml .github/workflows/publish.yml > /dev/null   # YAML parses?
+```
+
+Then extract each `run:` block *from the parsed document* and `bash -n` it, so the YAML parser does
+the dedenting rather than a regex.
+
+**No heredocs in a `run:` block.** A heredoc body must start at column 0, and a YAML block scalar
+requires every line to be at least as indented as its first. The two cannot coexist. The symptom is
+a run that fails in 0s with the workflow listed by *path* instead of its `name:`, which GitHub
+reports only as "This run likely failed because of a workflow file issue." Use `echo` lines.
+
 ### Testing the engines claim
 
 `engines` says `>=18`, but vitest 4 needs `^20 || ^22 || >=24`, so the full suite cannot run on

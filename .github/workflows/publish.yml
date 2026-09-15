@@ -105,27 +105,32 @@ jobs:
 
       # Verbose on purpose. This workflow runs a handful of times a year, and npm
       # reports a failed OIDC exchange as a bare "ENEEDAUTH ... run npm login",
-      # which is actively misleading. The verbose log carries the real message.
+      # which points at the wrong fix entirely. The verbose log carries the real
+      # message from npm's exchange endpoint.
+      #
+      # No heredoc here. A heredoc body must start at column 0, and a YAML block
+      # scalar requires every line to be at least as indented as its first, so
+      # the two cannot coexist. `echo` lines are immune to that.
       - name: publish
         if: steps.check.outputs.should_publish == 'true'
         run: |
-          if ! npm publish --access public --loglevel verbose 2>&1 | tee /tmp/publish.log; then
-            if grep -q "OIDC token exchange error - package not found" /tmp/publish.log; then
-              cat <<'HINT'
-::error::npm has no trusted-publisher record for this package. GitHub issued the OIDC token and npm rejected the exchange.
-
-Check npmjs.com -> ph-payroll -> Settings -> Trusted Publisher. All four must match exactly:
-  Organization or user : earnieacts
-  Repository           : ph-payroll
-  Workflow filename    : publish.yml        (just the filename, NOT .github/workflows/publish.yml)
-  Environment name     : leave BLANK        (this workflow declares no GitHub environment;
-                                             setting one here makes the match fail)
-
-Also confirm "Allowed actions" permits `npm publish`, not only `npm stage publish`.
-HINT
-            fi
-            exit 1
+          set -o pipefail
+          if npm publish --access public --loglevel verbose 2>&1 | tee /tmp/publish.log; then
+            exit 0
           fi
+
+          if grep -q "OIDC token exchange error - package not found" /tmp/publish.log; then
+            echo "::error::npm has no trusted-publisher record for this package. GitHub issued the OIDC token; npm rejected the exchange."
+            echo "Check npmjs.com -> ph-payroll -> Settings -> Trusted Publisher."
+            echo "All four fields must match exactly:"
+            echo "  Organization or user : earnieacts"
+            echo "  Repository           : ph-payroll"
+            echo "  Workflow filename    : publish.yml   (bare filename, NOT .github/workflows/publish.yml)"
+            echo "  Environment name     : leave BLANK   (this workflow declares no environment;"
+            echo "                                        setting one makes the match fail)"
+            echo "Also confirm Allowed actions permits 'npm publish', not only 'npm stage publish'."
+          fi
+          exit 1
 
       # Idempotent on purpose. `npm version` creates the tag locally, so whether
       # it already exists on origin depends on whether you pushed with
