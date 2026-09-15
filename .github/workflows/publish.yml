@@ -103,9 +103,29 @@ jobs:
           fi
           echo "npm: $(npm --version)"
 
+      # Verbose on purpose. This workflow runs a handful of times a year, and npm
+      # reports a failed OIDC exchange as a bare "ENEEDAUTH ... run npm login",
+      # which is actively misleading. The verbose log carries the real message.
       - name: publish
         if: steps.check.outputs.should_publish == 'true'
-        run: npm publish --access public --loglevel verbose
+        run: |
+          if ! npm publish --access public --loglevel verbose 2>&1 | tee /tmp/publish.log; then
+            if grep -q "OIDC token exchange error - package not found" /tmp/publish.log; then
+              cat <<'HINT'
+::error::npm has no trusted-publisher record for this package. GitHub issued the OIDC token and npm rejected the exchange.
+
+Check npmjs.com -> ph-payroll -> Settings -> Trusted Publisher. All four must match exactly:
+  Organization or user : earnieacts
+  Repository           : ph-payroll
+  Workflow filename    : publish.yml        (just the filename, NOT .github/workflows/publish.yml)
+  Environment name     : leave BLANK        (this workflow declares no GitHub environment;
+                                             setting one here makes the match fail)
+
+Also confirm "Allowed actions" permits `npm publish`, not only `npm stage publish`.
+HINT
+            fi
+            exit 1
+          fi
 
       # Idempotent on purpose. `npm version` creates the tag locally, so whether
       # it already exists on origin depends on whether you pushed with
