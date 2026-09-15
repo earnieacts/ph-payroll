@@ -26,16 +26,20 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Trusted publishing needs Node >= 22.14.0.
-          node-version: '22.14.0'
+          # Trusted publishing needs Node >= 22.14.0 and npm >= 11.5.1.
+          #
+          # Do NOT pin 22.14.0 exactly. npm@latest is now npm 12, which requires
+          # node ^22.22.2 || ^24.15.0 || >=26.0.0, so installing it on 22.14.0
+          # fails with EBADENGINE. '24' resolves to the newest 24.x, which
+          # satisfies both constraints.
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
           cache: pnpm
 
-      # Trusted publishing needs npm >= 11.5.1, which is newer than the npm
-      # bundled with Node 22.14.0.
       - name: upgrade npm for trusted publishing
         run: |
           npm install -g npm@latest
+          node --version
           npm --version
 
       - run: pnpm install --frozen-lockfile

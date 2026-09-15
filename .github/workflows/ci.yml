@@ -31,16 +31,22 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+      # Pack the real tarball, so `compat` tests what a consumer installs:
+      # package.json, the exports map and all. An earlier version uploaded bare
+      # dist/, which has no package.json, so Node had nothing declaring
+      # "type": "module" — Node 22+ auto-detects ESM syntax and passed, Node 18
+      # does not and failed. The test was artificial; this one is not.
+      - run: npm pack
       - uses: actions/upload-artifact@v4
         if: matrix.node == '22'
         with:
-          name: dist
-          path: dist/
+          name: tarball
+          path: ph-payroll-*.tgz
           retention-days: 1
 
-  # Proves the `engines: >=18` claim by RUNNING the built artefact there.
-  # A declared floor that is never exercised is a floor that is wrong, and the
-  # library has zero runtime dependencies, so no install is needed at all.
+  # Proves `engines: >=18` by installing the packed tarball and running it.
+  # A declared floor that is never exercised is a floor that is wrong.
   compat:
     needs: test
     runs-on: ubuntu-latest
@@ -51,16 +57,24 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: dist
-          path: dist/
+          name: tarball
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - name: the built package imports and computes
+
+      - name: install the packed tarball as a consumer would
+        run: |
+          mkdir -p /tmp/consumer && cd /tmp/consumer
+          npm init -y > /dev/null
+          npm install "$GITHUB_WORKSPACE"/ph-payroll-*.tgz
+          node --version
+
+      - name: the installed package imports and computes
+        working-directory: /tmp/consumer
         run: |
           node --input-type=module -e "
             import { computePayroll, monthlySalaryCredit, parseDecimal, formatFixed, NoRuleError }
-              from './dist/index.js';
+              from 'ph-payroll';
 
             const r = computePayroll({ monthlyBasic: '25000', period: '2026-03' });
             const checks = [
@@ -73,7 +87,7 @@ jobs:
             ];
             let failed = false;
             for (const [name, got, want] of checks) {
-              if (got !== want) { console.error(\`FAIL \${name}: got \${got}, want \${want}\`); failed = true; }
+              if (got !== want) { console.error('FAIL ' + name + ': got ' + got + ', want ' + want); failed = true; }
             }
             try {
               computePayroll({ monthlyBasic: '25000', period: '2023-06' });
